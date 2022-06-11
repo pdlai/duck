@@ -4,6 +4,7 @@ public class LowStockEntry {
     public int stock;
     public int capacity;
     public int id;
+
     public LowStockEntry(String name, int stock, int capacity, int id){
         this.name = name;
         this.stock = stock;

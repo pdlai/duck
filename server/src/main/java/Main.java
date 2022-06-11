@@ -2,6 +2,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.poi.ss.usermodel.*;
 
+import java.util.HashMap;
 import java.util.Iterator;
 
 import static spark.Spark.*;
@@ -42,20 +43,34 @@ public class Main {
                 Row currentRow = rowIterator.next();
                 Iterator<Cell> cellIterator = currentRow.iterator();
 
+                String name;
+                double stock, capacity, id;
+                name = null;
+                stock = capacity = id = Double.NaN;
+
                 if (cellIterator.hasNext()) {
                     Cell nameCell = cellIterator.next();
+                    name = nameCell.getStringCellValue();
+                }
+                if (cellIterator.hasNext()) {
                     Cell stockCell = cellIterator.next();
+                    stock = stockCell.getNumericCellValue();
+                }
+                if (cellIterator.hasNext()) {
                     Cell capacityCell = cellIterator.next();
+                    capacity = capacityCell.getNumericCellValue();
+                }
+                if (cellIterator.hasNext()) {
                     Cell idCell = cellIterator.next();
+                    id = idCell.getNumericCellValue();
+                }
 
-                    String name = nameCell.getStringCellValue();
-                    double stock = stockCell.getNumericCellValue();
-                    double capacity = capacityCell.getNumericCellValue();
-                    double id = idCell.getNumericCellValue();
+                if (name == null || Double.isNaN(stock) || Double.isNaN(capacity) || Double.isNaN(id)) {
+                    break;
+                }
 
-                    if (stock / capacity < 0.25){
-                        stockResponse.items.add(new LowStockEntry(name, (int) stock,(int) capacity, (int) id));
-                    }
+                if (stock / capacity < 0.25){
+                    stockResponse.items.add(new LowStockEntry(name, (int) stock,(int) capacity, (int) id));
                 }
             }
 
@@ -68,11 +83,14 @@ public class Main {
             double totalCost = 0;
             RestockCostResponse costResponse = new RestockCostResponse(totalCost);
 
+            HashMap<String, Integer> quantities = new HashMap<>();
+            HashMap<String, Double> lowestCosts = new HashMap<>();
+
             ObjectMapper mapper = new ObjectMapper();
             JsonNode jsonNode = mapper.readTree(request.body());
             jsonNode.fields().forEachRemaining( field -> {
-                System.out.println(field.getKey());
-                System.out.println(field.getValue().intValue());
+                quantities.put(field.getKey(), field.getValue().intValue());
+                lowestCosts.put(field.getKey(), Double.NaN);
             });
 
             Iterator<Sheet> distributorsIterator = distributorsBook.iterator();
@@ -87,20 +105,45 @@ public class Main {
                     Row currentRow = rowIterator.next();
                     Iterator<Cell> cellIterator = currentRow.iterator();
 
+                    String name;
+                    double id, cost;
+                    name = null;
+                    id = cost = Double.NaN;
+
                     if (cellIterator.hasNext()) {
                         Cell nameCell = cellIterator.next();
+                        name = nameCell.getStringCellValue();
+                    }
+                    if (cellIterator.hasNext()) {
                         Cell idCell = cellIterator.next();
+                        id = idCell.getNumericCellValue();
+                    }
+                    if (cellIterator.hasNext()) {
                         Cell costCell = cellIterator.next();
+                        cost = costCell.getNumericCellValue();
+                    }
 
-//                    String name = nameCell.getStringCellValue();
-//                    double id = idCell.getNumericCellValue();
-//                    double cost = costCell.getNumericCellValue();
+                    if (name == null || Double.isNaN(id) || Double.isNaN(cost)) {
+                        break;
+                    }
 
-                        System.out.println(123);
+                    if ( lowestCosts.containsKey(name) ) {
+                        if ( Double.isNaN(lowestCosts.get(name)) ) {
+                            lowestCosts.put(name, cost);
+                        } else {
+                            if (cost < lowestCosts.get(name)){
+                                lowestCosts.put(name,cost);
+                            }
+                        }
                     }
                 }
             }
 
+            for (String name : quantities.keySet()) {
+                totalCost += quantities.get(name) * lowestCosts.get(name);
+            }
+
+            costResponse.cost = totalCost;
             return costResponse;
         }, new JsonTransformer());
 

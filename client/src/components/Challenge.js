@@ -10,7 +10,6 @@ export default function Challenge() {
     fetch("http://localhost:4567/low-stock")
       .then(response => response.json())
       .then(data => setItems(data['items']))
-      .then(console.log(items))
   }
 
   function getRestockCost(){
@@ -25,9 +24,10 @@ export default function Challenge() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
     };
+
     fetch("http://localhost:4567/restock-cost", requestOptions)
       .then(response => response.json())
-      .then(data => console.log(data))
+      .then(data => setCost(data['cost']))
   }
 
   return (
@@ -48,7 +48,6 @@ export default function Challenge() {
           }
         </tbody>
       </table>
-      {/* TODO: Display total cost returned from the server */}
       <div>Total Cost: ${cost}</div>
       <button onClick={getLowStock}>Get Low-Stock Items</button>
       <button onClick={getRestockCost}>Determine Re-Order Cost</button>
