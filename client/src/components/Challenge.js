@@ -1,4 +1,35 @@
+import React, { useState } from "react";
+import ItemRow from "../components/ItemRow";
+
 export default function Challenge() {
+
+  const [items, setItems] = useState([]);
+  const [cost, setCost] = useState(0);
+
+  function getLowStock(){
+    fetch("http://localhost:4567/low-stock")
+      .then(response => response.json())
+      .then(data => setItems(data['items']))
+      .then(console.log(items))
+  }
+
+  function getRestockCost(){
+    let data = {};
+    items.forEach( item => {
+      const name = item.name;
+      const restock = item.capacity - item.stock;
+      data[name] = restock;
+    })
+    const requestOptions = {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    };
+    fetch("http://localhost:4567/restock-cost", requestOptions)
+      .then(response => response.json())
+      .then(data => console.log(data))
+  }
+
   return (
     <>
       <table>
@@ -12,20 +43,15 @@ export default function Challenge() {
           </tr>
         </thead>
         <tbody>
-          {/* 
-          TODO: Create an <ItemRow /> component that's rendered for every inventory item. The component
-          will need an input element in the Order Amount column that will take in the order amount and 
-          update the application state appropriately.
-          */}
+          {
+            items.map( item => <ItemRow key={item.id} item={item} />)
+          }
         </tbody>
       </table>
       {/* TODO: Display total cost returned from the server */}
-      <div>Total Cost: </div>
-      {/* 
-      TODO: Add event handlers to these buttons that use the Java API to perform their relative actions.
-      */}
-      <button>Get Low-Stock Items</button>
-      <button>Determine Re-Order Cost</button>
+      <div>Total Cost: ${cost}</div>
+      <button onClick={getLowStock}>Get Low-Stock Items</button>
+      <button onClick={getRestockCost}>Determine Re-Order Cost</button>
     </>
   );
 }
